@@ -1,3 +1,4 @@
+"use client"
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { GradientText } from '../components/GradientText';
@@ -23,10 +24,9 @@ interface ProfileData {
     name: string;
 }
 
-interface ChatInterfaceProps {
-    profileData?: ProfileData;
-    onBack?: () => void;
-}
+// interface ChatInterfaceProps {
+//     profileData?: ProfileData;
+// }
 
 type CustomFileType = {
     file_name: string
@@ -35,7 +35,7 @@ type CustomFileType = {
     textContent: string
 }
 
-export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
+export const ChatInterface = ({ }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [currentMessage, setCurrentMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +43,24 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
     const [ragMode, toggleRagMode] = useState<boolean>(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [profileData, setProfileData] = useState<{}>();
+
+    useEffect(() => {
+      const raw = localStorage.getItem("formData"); // string or null
+      if (raw) {
+        try {
+          const data: FormData = JSON.parse(raw);
+          setProfileData(data);
+          console.log("Loaded form data:", data);
+          // Use `data` as needed
+        } catch (error) {
+          console.error("Failed to parse form data:", error);
+        }
+      } else {
+        console.log("No form data found in localStorage");
+      }
+    }, []); // runs only once on client
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
