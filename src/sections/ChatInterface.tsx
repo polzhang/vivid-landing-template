@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { GradientText } from '../components/GradientText';
-import { useNavigate } from 'react-router-dom';
-import Link from 'next/link';
-
-// You will also need to import the RatingsModal component once you create it.
-import { RatingsModal } from '../components/RatingsModal'; 
+import { Paperclip } from 'lucide-react';
+import { RatingsModal } from '../components/RatingsModal'; // Import the new modal component
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -30,27 +27,34 @@ interface ChatInterfaceProps {
   onBack?: () => void;
 }
 
+// Defining the CustomFileType to match the RAG implementation
+type CustomFileType = {
+  file_name: string;
+  mime_type: string;
+  size: number;
+  textContent: string;
+};
+
 export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<CustomFileType[]>([]);
+  const [ragMode, toggleRagMode] = useState<boolean>(false);
+  const [isRatingsModalOpen, setIsRatingsModalOpen] = useState(false); // State for the ratings modal
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedInsuranceType, setSelectedInsuranceType] = useState(profileData?.insuranceType || 'life');
-
-  // Add state to manage the modal's visibility
-  const [isRatingsModalOpen, setIsRatingsModalOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Auto-generate initial analysis when component mounts with profile data
   useEffect(() => {
     if (profileData && messages.length === 0) {
       generateInitialAnalysis();
     }
-  }, [profileData]);
+  }, [profileData, selectedInsuranceType]);
 
   const generateInitialAnalysis = async () => {
     if (!profileData) return;
@@ -58,7 +62,6 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
     setIsLoading(true);
 
     try {
-      // Build user profile summary
       const updatedProfileData = { ...profileData, insuranceType: selectedInsuranceType };
       const profileSummaryLines = [];
       for (const [key, value] of Object.entries(updatedProfileData)) {
@@ -70,7 +73,6 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         ? profileSummaryLines.join('\n')
         : "No profile information provided.";
 
-      // Initial analysis request
       const initialRequest = [
         "User Profile Information:",
         profileSummary,
@@ -81,7 +83,6 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         "Please provide a comprehensive insurance analysis and personalized recommendations based on my profile. Include suitable insurance types, coverage amounts, and explain why these recommendations fit my situation."
       ].join('\n');
 
-      // Call the API
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -100,33 +101,19 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
       }
 
       const data = await response.json();
-      
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: data.message,
         timestamp: new Date()
       };
-
       setMessages([assistantMessage]);
-      
+
     } catch (error) {
       console.error('Error generating initial analysis:', error);
       let errorMsg = 'Sorry, I encountered an error generating your initial analysis.';
-      
       if (error instanceof Error) {
-        if (error.message.includes('401')) {
-          errorMsg = 'Authentication error. Please contact support.';
-        } else if (error.message.includes('403')) {
-          errorMsg = 'Access forbidden. Please contact support.';
-        } else if (error.message.includes('429')) {
-          errorMsg = 'Too many requests. Please try again in a moment.';
-        } else if (error.message.includes('500')) {
-          errorMsg = 'Server error. Please try again later.';
-        } else {
-          errorMsg = `Error: ${error.message}`;
-        }
+        errorMsg = `Error: ${error.message}`;
       }
-      
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: errorMsg,
@@ -139,9 +126,60 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      if (file.type === 'application/pdf') {
+        handleFileUpload(file);
+      } else {
+        alert('Only PDF files are supported.');
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    setIsLoading(true);
+
+    const formData1 = new FormData();
+    formData1.append("file", file);
+
+    try {
+      const response1 = await fetch("/api/parse-pdf", {
+        method: "POST",
+        body: formData1,
+      });
+      if (!response1.ok) {
+        throw new Error(`HTTP error! status: ${response1.status}`);
+      }
+      const data1 = await response1.json();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `✅ File "${file.name}" added successfully and its content is now available.`,
+          timestamp: new Date()
+        },
+      ]);
+      setUploadedFiles((prev) => [...prev, data1]);
+      return data1;
+    } catch (error) {
+      console.error("Error parsing PDF file:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `❌ Error parsing file "${file.name}". Please try again.`,
+          timestamp: new Date()
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const removeFile = (index: number) => {
@@ -162,9 +200,7 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
     setIsLoading(true);
 
     try {
-      // Build user profile summary
       const updatedProfileData = profileData ? { ...profileData, insuranceType: selectedInsuranceType } : null;
-      console.log('Updated Profile Data:', updatedProfileData);
       const profileSummaryLines = [];
       if (updatedProfileData) {
         for (const [key, value] of Object.entries(updatedProfileData)) {
@@ -177,13 +213,11 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         ? profileSummaryLines.join('\n')
         : "No profile information provided.";
 
-      // Build files summary
       const filesSummary = uploadedFiles.length > 0
-        ? `Uploaded policy documents: ${uploadedFiles.map(f => f.name).join(', ')}`
+        ? `Uploaded policy documents: ${uploadedFiles.map(f => f.file_name).join(', ')}`
         : "No policy documents uploaded.";
 
-      // Combine all user info
-      const combinedUserContent = [
+      var combinedUserContent = [
         "User Profile Information:",
         profileSummary,
         "",
@@ -193,16 +227,64 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         currentMessage
       ].join('\n');
 
-      // Call API
+      if (ragMode) {
+        const hyde_msg = `
+          I am using Hyde.
+          You are an insurance agent.
+          These are the relevant documents:
+          ${uploadedFiles.map((file) => file.textContent).join("\n\n")}
+          This is the prompt by the user:
+          ${combinedUserContent}
+          Give me the relevant details as the best embedding to enable RAG to pull the best relevant documents.
+        `;
+
+        const hyde_resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: hyde_msg, profileData, uploadedFiles: uploadedFiles.map(f => f.file_name) })
+        });
+        const hyde_data = await hyde_resp.json();
+
+        const embeddings = await fetch("/api/embedder", {
+          method: "POST",
+          body: JSON.stringify({ message: hyde_data.message }),
+        });
+        if (!embeddings.ok) {
+          throw new Error(`HTTP error! status: ${embeddings.status}`);
+        }
+        const embedding = await embeddings.json();
+
+        const res = await fetch("/api/vector-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embedding }),
+        });
+        const data = await res.json();
+        const topMatches = data.matches;
+
+        const context = topMatches
+          .map((doc: any, i: number) => `Document ${i + 1} (${doc.fileName}):\n${doc.textContent}`)
+          .join("\n\n");
+
+        combinedUserContent = `
+          You are a helpful assistant. Use the following context from documents to answer the question accurately.
+          Context:
+          ${context}
+          Relevant user documents:
+          ${uploadedFiles.map((file) => file.textContent).join("\n")}
+          Question:
+          ${combinedUserContent}
+          Answer:
+        `;
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: combinedUserContent,
           updatedProfileData,
-          uploadedFiles: uploadedFiles.map(f => f.name)
+          uploadedFiles: uploadedFiles.map(f => f.file_name)
         })
       });
 
@@ -212,38 +294,22 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
       }
 
       const data = await response.json();
-      
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: data.message,
         timestamp: new Date()
       };
-
       setMessages(prev => [...prev, assistantMessage]);
-      
-      // Clear uploaded files after successful response (if any exist)
+
       if (uploadedFiles.length > 0) {
         setUploadedFiles([]);
       }
-      
     } catch (error) {
       console.error('Error calling backend API:', error);
       let errorMsg = 'Sorry, I encountered an error processing your request.';
-      
       if (error instanceof Error) {
-        if (error.message.includes('401')) {
-          errorMsg = 'Authentication error. Please contact support.';
-        } else if (error.message.includes('403')) {
-          errorMsg = 'Access forbidden. Please contact support.';
-        } else if (error.message.includes('429')) {
-          errorMsg = 'Too many requests. Please try again in a moment.';
-        } else if (error.message.includes('500')) {
-          errorMsg = 'Server error. Please try again later.';
-        } else {
-          errorMsg = `Error: ${error.message}`;
-        }
+        errorMsg = `Error: ${error.message}`;
       }
-      
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: errorMsg,
@@ -262,30 +328,37 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
       sendMessage();
     }
   };
-  
+
   return (
     <div className="max-w-6xl mx-auto p-4 h-screen flex flex-col">
       <div className="flex items-center gap-4 mb-4 justify-between">
-        <label htmlFor="insurance-dropdown" className="font-semibold text-gray-700">Insurance Type:</label>
-        <select
-          id="insurance-dropdown"
-          value={selectedInsuranceType}
-          onChange={(e) => setSelectedInsuranceType(e.target.value)}
-          className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-        >
-          <option value="life">Life Insurance</option>
-          <option value="health">Health Insurance</option>
-          <option value="travel">Travel Insurance</option>
-          <option value="auto">Vehicle Insurance</option>
-          <option value="home">Home Insurance</option>
-        </select>
-        {/* The new button to open the modal */}
+        {onBack && (
+          <Button onClick={onBack}>
+            &larr; Back
+          </Button>
+        )}
+        <h1 className="text-2xl font-bold">
+          <GradientText>Insurance Chat</GradientText>
+        </h1>
+        <div style={{ zIndex: "10" }} className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">RAG Mode</span>
+          <button
+            onClick={() => toggleRagMode(!ragMode)}
+            role="switch"
+            aria-checked={ragMode}
+            style={{ cursor: "pointer" }}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${ragMode ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.8)]" : "bg-gray-300 dark:bg-gray-600"}`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${ragMode ? "translate-x-4" : "translate-x-1"}`}
+            />
+          </button>
+        </div>
         <Button onClick={() => setIsRatingsModalOpen(true)} className="px-4 h-12 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white">
           View Company Ratings
         </Button>
       </div>
 
-      {/* Chat Messages - Maximum space */}
       <div className="flex-1 overflow-y-auto mb-6 space-y-3 bg-gray-50 p-3 rounded-lg">
         {messages.map((message, index) => (
           <div
@@ -294,23 +367,19 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           >
             <div
               className={`max-w-4xl px-4 py-3 rounded-lg ${
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-800 border border-gray-200'
+                message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'
               }`}
             >
               <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{
                 __html: message.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
               }}></div>
-              <div className={`text-xs mt-1 ${
-                message.role === 'user' ? 'text-blue-200' : 'text-gray-500'
-              }`}>
+              <div className={`text-xs mt-1 ${message.role === 'user' ? 'text-blue-200' : 'text-gray-500'}`}>
                 {message.timestamp.toLocaleTimeString()}
               </div>
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-white text-gray-800 border border-gray-200 px-4 py-3 rounded-lg">
@@ -321,11 +390,9 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
             </div>
           </div>
         )}
-        
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Minimal Message Input */}
       <div className="flex gap-2 items-end">
         <textarea
           value={currentMessage}
@@ -336,6 +403,21 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           rows={1}
           disabled={isLoading}
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          className={`flex items-center justify-center h-12 w-12 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          <Paperclip className="w-4 h-4" />
+        </button>
         <Button
           onClick={sendMessage}
           disabled={!currentMessage.trim() || isLoading}
@@ -345,7 +427,6 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         </Button>
       </div>
 
-      {/* Conditionally render the modal */}
       {isRatingsModalOpen && <RatingsModal onClose={() => setIsRatingsModalOpen(false)} />}
     </div>
   );
