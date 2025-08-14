@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { GradientText } from '../components/GradientText';
+import { useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+
+// You will also need to import the RatingsModal component once you create it.
+import { RatingsModal } from '../components/RatingsModal'; 
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -31,6 +36,10 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedInsuranceType, setSelectedInsuranceType] = useState(profileData?.insuranceType || 'life');
+
+  // Add state to manage the modal's visibility
+  const [isRatingsModalOpen, setIsRatingsModalOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,14 +59,15 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
 
     try {
       // Build user profile summary
+      const updatedProfileData = { ...profileData, insuranceType: selectedInsuranceType };
       const profileSummaryLines = [];
-      for (const [key, value] of Object.entries(profileData)) {
+      for (const [key, value] of Object.entries(updatedProfileData)) {
         if (value && value.toString().trim() !== '') {
           profileSummaryLines.push(`- ${key}: ${value}`);
         }
       }
-      const profileSummary = profileSummaryLines.length > 0 
-        ? profileSummaryLines.join('\n') 
+      const profileSummary = profileSummaryLines.length > 0
+        ? profileSummaryLines.join('\n')
         : "No profile information provided.";
 
       // Initial analysis request
@@ -79,7 +89,7 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         },
         body: JSON.stringify({
           messages: initialRequest,
-          profileData,
+          updatedProfileData,
           uploadedFiles: []
         })
       });
@@ -153,20 +163,22 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
 
     try {
       // Build user profile summary
+      const updatedProfileData = profileData ? { ...profileData, insuranceType: selectedInsuranceType } : null;
+      console.log('Updated Profile Data:', updatedProfileData);
       const profileSummaryLines = [];
-      if (profileData) {
-        for (const [key, value] of Object.entries(profileData)) {
+      if (updatedProfileData) {
+        for (const [key, value] of Object.entries(updatedProfileData)) {
           if (value && value.toString().trim() !== '') {
             profileSummaryLines.push(`- ${key}: ${value}`);
           }
         }
       }
-      const profileSummary = profileSummaryLines.length > 0 
-        ? profileSummaryLines.join('\n') 
+      const profileSummary = profileSummaryLines.length > 0
+        ? profileSummaryLines.join('\n')
         : "No profile information provided.";
 
       // Build files summary
-      const filesSummary = uploadedFiles.length > 0 
+      const filesSummary = uploadedFiles.length > 0
         ? `Uploaded policy documents: ${uploadedFiles.map(f => f.name).join(', ')}`
         : "No policy documents uploaded.";
 
@@ -189,7 +201,7 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
         },
         body: JSON.stringify({
           messages: combinedUserContent,
-          profileData,
+          updatedProfileData,
           uploadedFiles: uploadedFiles.map(f => f.name)
         })
       });
@@ -250,10 +262,28 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
       sendMessage();
     }
   };
-
+  
   return (
     <div className="max-w-6xl mx-auto p-4 h-screen flex flex-col">
-
+      <div className="flex items-center gap-4 mb-4 justify-between">
+        <label htmlFor="insurance-dropdown" className="font-semibold text-gray-700">Insurance Type:</label>
+        <select
+          id="insurance-dropdown"
+          value={selectedInsuranceType}
+          onChange={(e) => setSelectedInsuranceType(e.target.value)}
+          className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+        >
+          <option value="life">Life Insurance</option>
+          <option value="health">Health Insurance</option>
+          <option value="travel">Travel Insurance</option>
+          <option value="auto">Vehicle Insurance</option>
+          <option value="home">Home Insurance</option>
+        </select>
+        {/* The new button to open the modal */}
+        <Button onClick={() => setIsRatingsModalOpen(true)} className="px-4 h-12 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white">
+          View Company Ratings
+        </Button>
+      </div>
 
       {/* Chat Messages - Maximum space */}
       <div className="flex-1 overflow-y-auto mb-6 space-y-3 bg-gray-50 p-3 rounded-lg">
@@ -314,6 +344,9 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           Send
         </Button>
       </div>
+
+      {/* Conditionally render the modal */}
+      {isRatingsModalOpen && <RatingsModal onClose={() => setIsRatingsModalOpen(false)} />}
     </div>
   );
 };

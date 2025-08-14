@@ -7,6 +7,7 @@ import Head from "next/head";
 import { NextSeo } from "next-seo";
 import { useEffect } from "react";
 import { useDarkMode, useEffectOnce } from "usehooks-ts";
+import { BrowserRouter as Router } from 'react-router-dom';
 
 // Initialize Vivid (https://vivid.lol) - DISABLED
 // if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
