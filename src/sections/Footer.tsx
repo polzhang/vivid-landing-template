@@ -10,17 +10,20 @@ export const Footer = () => {
         <div className="items-center gap-4 row">
           <Image
             src="/images/logo.png"
-            alt="Vivid Logo"
+            alt="ClearCover Logo"
             height="40"
             width="40"
           />
-          <div className="text-sm text-light">&copy; Vivid Labs, Inc. 2022</div>
+          <div className="text-sm text-light">&copy; ClearCover, Inc. 2025</div>
         </div>
+        
         <LinkButton
-          href="https://join.slack.com/t/vivid-jqa6824/shared_invite/zt-1f7tbxl86-wruO1aM7FYmEdNaOOnYCMQ"
-          aria-label="Join Slack"
+          href="https://www.linkedin.com/in/jun-wei-ng-2b06b6251/?originalSubdomain=sg"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Jun Wei Ng LinkedIn Profile"
         >
-          Join our Slack!
+          Contact
         </LinkButton>
       </div>
     </footer>

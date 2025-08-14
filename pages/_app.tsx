@@ -8,15 +8,15 @@ import { NextSeo } from "next-seo";
 import { useEffect } from "react";
 import { useDarkMode, useEffectOnce } from "usehooks-ts";
 
-// Initialize Vivid (https://vivid.lol)
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  import("vivid-studio").then((v) => v.run());
-  import("vivid-studio/style.css");
-}
+// Initialize Vivid (https://vivid.lol) - DISABLED
+// if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+//   import("vivid-studio").then((v) => v.run());
+//   import("vivid-studio/style.css");
+// }
 
-const siteTitle = "Vivid — Build visually. Code faster.";
+const siteTitle = "ClearCover Clear insurance advice in 5 minutes";
 const siteDescription =
-  "Make CSS styling a breeze with Vivid's in-browser visual editor that automatically updates your code.";
+  "Get objective, transparent insurance recommendations in just 5 minutes. We're not affiliated with any insurer and don't profit from your decisions.";
 
 const App = ({ Component, pageProps }: AppProps) => {
   const { isDarkMode, toggle: toggleDarkMode } = useDarkMode();
@@ -53,7 +53,7 @@ const App = ({ Component, pageProps }: AppProps) => {
         <link rel="icon" href="/icons/favicon.ico" />
         <meta
           property="og:image"
-          content="https://vivid.lol/images/landing-page.png"
+          content="https://clearcover.app/images/landing-page.png"
         />
       </Head>
       <NextSeo

@@ -7,7 +7,7 @@ import { GradientText } from "../components/GradientText";
 import { Section } from "../components/Section";
 import { Title } from "../components/Title";
 
-// Built with Vivid (https://vivid.lol) ⚡️
+// Built with Vivid (https://vivid.lol) âš¡ï¸
 
 const FeatureSection = ({
   children,
@@ -82,61 +82,99 @@ const Text = ({
   </div>
 );
 
+const KeyMessageSection = () => (
+  <Section grayer className="gap-8 text-center">
+    <div className="max-w-4xl mx-auto">
+      <Title size="md">
+        <GradientText className="amber-red">Five minutes</GradientText> is all it takes
+      </Title>
+      <div className="mt-8 p-8 bg-white/50 rounded-xl">
+        <Details className="mb-6">
+          We are not affiliated with any insurer, we do not profit from your decisions, and we are not paid by any insurance company. 
+          We take care of everything and give you smart advice without any upselling or commission-driven pressure. 
+          Our goal is to help you do what is best for your needs.
+        </Details>
+        
+        <div className="mb-6">
+          <p className="text-lg font-semibold mb-4 text-strong">Whether you:</p>
+          <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+              <p className="text-medium">Are starting from zero and don't know what "term" or "whole life" means</p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+              <p className="text-medium">Just want help fine-tuning your coverage</p>
+            </div>
+          </div>
+        </div>
+        
+        <Details>
+          We guide you every step of the way from your first click to your perfect policy match.
+        </Details>
+      </div>
+    </div>
+  </Section>
+);
+
 export const Features = () => {
   return (
     <>
+      {/* Key Message Section */}
+      <KeyMessageSection />
+      
       {/* Feature 1 */}
-      <FeatureSection grayer center>
+      <FeatureSection center>
         <Text center>
           <Title size="md">
             <GradientText className="amber-red">
-              &quot;Just right&quot;
+              &quot;Unbiased analysis&quot;
             </GradientText>{" "}
             in seconds.
           </Title>
-          <Details>Test styling and update code right in your browser.</Details>
+          <Details>Get objective recommendations with no hidden agendas or commissions.</Details>
         </Text>
         <FeatureDemo
           webmSrc="/videos/palette.webm"
           mp4Src="/videos/palette.mp4"
           center
           className="amber-red"
-          alt="A video showing Vivid's command palette functionality. The user iterates through previewed styles and applies one."
+          alt="A video showing ClearCover's unbiased analysis functionality"
         />
       </FeatureSection>
+      
       {/* Feature 2 */}
-      <FeatureSection right>
+      <FeatureSection grayer right>
         <Text>
           <Title size="md">
-            <GradientText className="pink-blue">Resize</GradientText>
-            <br /> with a click.
+            <GradientText className="pink-blue">Compare</GradientText>
+            <br /> with confidence.
           </Title>
-          <Details>Just drag to resize and realign components.</Details>
+          <Details>See clear comparisons between policies and coverage options.</Details>
         </Text>
         <FeatureDemo
           webmSrc="/videos/resize.webm"
           mp4Src="/videos/resize.mp4"
           bumpLeft
           className="pink-blue"
-          alt="A video showing Vivid's mouse resizing functionality. By dragging with a mouse, the user resizes a component."
+          alt="A video showing ClearCover's policy comparison functionality"
         />
       </FeatureSection>
+      
       {/* Feature 3 */}
-      <FeatureSection grayer>
+      <FeatureSection>
         <Text>
           <Title size="md">
-            <GradientText className="green-sky">Smart commands</GradientText>
+            <GradientText className="green-sky">Smart recommendations</GradientText>
             <br /> cut the guesswork.
           </Title>
           <Details>
-            Vivid smart commands apply the right styles every time.
+            ClearCover's AI applies the right analysis every time.
           </Details>
         </Text>
         <FeatureDemo
           webmSrc="/videos/center.webm"
           mp4Src="/videos/center.mp4"
           className="green-sky"
-          alt="A video showing Vivid's smart command functionality. By typing smart-center, the user centers all content on screen."
+          alt="A video showing ClearCover's smart recommendation functionality"
         />
       </FeatureSection>
     </>
