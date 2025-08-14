@@ -7,6 +7,7 @@ import { GradientText } from "../components/GradientText";
 import { Button } from "../components/Button";
 import { ProfileForm } from "../sections/ProfileForm";
 import { ChatInterface } from "../sections/ChatInterface";
+import { useRouter } from "next/router";
 
 // Built with Vivid (https://vivid.lol) ✨
 
@@ -36,13 +37,27 @@ export const Hero = () => {
   const [showChat, setShowChat] = useState(false);
   const [formData, setFormData] = useState<FormData | null>(null);
 
-  // Handle form completion and transition to chat
+  // // Handle form completion and transition to chat
+  // const handleFormSubmit = (data: FormData) => {
+  //   console.log('Hero received form data:', data);
+  //   setFormData(data);
+  //   setShowForm(false);
+  //   setShowChat(true);
+  //   console.log('Transitioning to chat interface');
+  // };
+  const router = useRouter();
   const handleFormSubmit = (data: FormData) => {
-    console.log('Hero received form data:', data);
-    setFormData(data);
-    setShowForm(false);
-    setShowChat(true);
-    console.log('Transitioning to chat interface');
+    console.log("Hero received form data:", data);
+
+    // 1️⃣ Save form data to localStorage
+    try {
+      localStorage.setItem("formData", JSON.stringify(data));
+    } catch (error) {
+      console.error("Error saving form data:", error);
+    }
+
+    // 2️⃣ Navigate to chat interface page
+    router.push("/chat_interface");
   };
 
   // Handle back navigation from chat

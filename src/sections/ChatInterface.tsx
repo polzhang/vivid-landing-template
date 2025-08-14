@@ -1,8 +1,10 @@
+"use client"
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { GradientText } from '../components/GradientText';
 import { Paperclip } from 'lucide-react';
 import { RatingsModal } from '../components/RatingsModal'; // Import the new modal component
+import { useRouter } from 'next/router';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -22,11 +24,6 @@ interface ProfileData {
   name: string;
 }
 
-interface ChatInterfaceProps {
-  profileData?: ProfileData;
-  onBack?: () => void;
-}
-
 // Defining the CustomFileType to match the RAG implementation
 type CustomFileType = {
   file_name: string;
@@ -35,16 +32,38 @@ type CustomFileType = {
   textContent: string;
 };
 
-export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
+interface ChatInterfaceProps {
+  onBack?: () => void;
+}
+
+export const ChatInterface = ({ onBack }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<CustomFileType[]>([]);
   const [ragMode, toggleRagMode] = useState<boolean>(false);
-  const [isRatingsModalOpen, setIsRatingsModalOpen] = useState(false); // State for the ratings modal
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedInsuranceType, setSelectedInsuranceType] = useState(profileData?.insuranceType || 'life');
+  const [profileData, setProfileData] = useState<ProfileData | undefined>(undefined);
+  const [selectedInsuranceType, setSelectedInsuranceType] = useState(profileData?.insuranceType || 'Life');
+
+  // List of insurance types for the dropdown
+  const insuranceTypes = ['Life', 'Health', 'Auto', 'Home'];
+
+  useEffect(() => {
+    const raw = localStorage.getItem("formData");
+    if (raw) {
+      try {
+        const data: ProfileData = JSON.parse(raw);
+        setProfileData(data);
+        setSelectedInsuranceType(data.insuranceType || 'Life'); // Set initial dropdown value
+      } catch (error) {
+        console.error("Failed to parse form data:", error);
+      }
+    } else {
+      console.log("No form data found in localStorage");
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,7 +153,12 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
       if (file.type === 'application/pdf') {
         handleFileUpload(file);
       } else {
-        alert('Only PDF files are supported.');
+        // Use a custom message box instead of alert()
+        setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: '❌ Only PDF files are supported.',
+            timestamp: new Date()
+        }]);
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -329,8 +353,14 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
     }
   };
 
+  const router = useRouter();
+
+  const handleNextPage = () => {
+    router.push('/ratings');
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-4 h-screen flex flex-col">
+    <div className="max-w-6xl mx-auto p-4 h-screen flex flex-col pt-20">
       <div className="flex items-center gap-4 mb-4 justify-between">
         {onBack && (
           <Button onClick={onBack}>
@@ -338,8 +368,22 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           </Button>
         )}
         <h1 className="text-2xl font-bold">
-          <GradientText>Insurance Chat</GradientText>
+          <span className="text-m text-black-1000">Insurance Chat</span>
         </h1>
+        {/* Dropdown for selecting insurance type */}
+        <div className="flex items-center">
+          <label htmlFor="insurance-type-select" className="sr-only">Select Insurance Type</label>
+          <select
+            id="insurance-type-select"
+            value={selectedInsuranceType}
+            onChange={(e) => setSelectedInsuranceType(e.target.value)}
+            className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+          >
+            {insuranceTypes.map(type => (
+              <option key={type} value={type}>{type} Insurance</option>
+            ))}
+          </select>
+        </div>
         <div style={{ zIndex: "10" }} className="flex items-center gap-2">
           <span className="text-xs text-gray-500">RAG Mode</span>
           <button
@@ -354,8 +398,12 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
             />
           </button>
         </div>
-        <Button onClick={() => setIsRatingsModalOpen(true)} className="px-4 h-12 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white">
-          View Company Ratings
+        <Button
+          onClick={handleNextPage}
+          disabled={isLoading}
+          className="px-4 h-12 flex items-center justify-center"
+        >
+          View Ratings
         </Button>
       </div>
 
@@ -367,7 +415,7 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           >
             <div
               className={`max-w-4xl px-4 py-3 rounded-lg ${
-                message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'
+                message.role === 'user' ? 'bg-blue-600 text-black' : 'bg-black text-gray-800 border border-gray-200'
               }`}
             >
               <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{
@@ -426,8 +474,8 @@ export const ChatInterface = ({ profileData, onBack }: ChatInterfaceProps) => {
           Send
         </Button>
       </div>
-
-      {isRatingsModalOpen && <RatingsModal onClose={() => setIsRatingsModalOpen(false)} />}
     </div>
   );
 };
+
+export default ChatInterface;
