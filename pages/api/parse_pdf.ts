@@ -1,55 +1,64 @@
-// src/app/api/upload-pdf/route.ts
-import { NextResponse, NextRequest } from 'next/server';
-import { parsePdf } from './lib/pdf-utils';
+import type { NextApiRequest, NextApiResponse } from "next";
+import formidable, { File } from "formidable";
+import fs from "fs";
+import { parsePdf } from "./lib/pdf-utils";
 
-// Force Node runtime so Buffer/PDF.js work (not Edge)
-export const runtime = 'nodejs';
-// If your route may be hit frequently and reads request body, keep it dynamic
-export const dynamic = 'force-dynamic';
+// Disable Next.js body parsing (since formidable handles it)
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
 
-export async function POST(req: NextRequest) {
+export default async function handler(
+    req: NextApiRequest,
+    res: NextApiResponse,
+) {
+    if (req.method !== "POST") {
+        res.setHeader("Allow", ["POST"]);
+        return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+    }
+
     try {
-        const formData = await req.formData();
-        const file = formData.get('file');
+        const form = formidable({ maxFileSize: 10 * 1024 * 1024 }); // 10 MB
 
-        if (!(file instanceof File)) {
-            return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+        const [fields, files] = await form.parse(req).catch((err) => {
+            throw new Error(`Failed to parse form: ${err}`);
+        });
+
+        const file = (files.file?.[0] ?? files.file) as File;
+        if (!file) {
+            return res.status(400).json({ error: "No file uploaded." });
         }
 
-        // Basic validation
-        const contentType = file.type || '';
-        if (!/pdf/i.test(contentType) && !file.name.toLowerCase().endsWith('.pdf')) {
-            return NextResponse.json({ error: 'Uploaded file must be a PDF.' }, { status: 400 });
+        // Validate extension/type
+        const fileName = file.originalFilename || "uploaded.pdf";
+        if (!fileName.toLowerCase().endsWith(".pdf")) {
+            return res.status(400).json({ error: "Uploaded file must be a PDF." });
         }
 
-        // (Optional) size guard: ~10 MB
-        const MAX_BYTES = 10 * 1024 * 1024;
-        if (typeof file.size === 'number' && file.size > MAX_BYTES) {
-            return NextResponse.json({ error: 'PDF too large. Max 10 MB.' }, { status: 413 });
-        }
+        const filePath = file.filepath; // formidable v2/v3 difference
+        const buffer = fs.readFileSync(filePath);
 
-        // Read into a Node Buffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        // 1) Parse PDF -> text (server-side, no worker)
+        // Parse PDF to text
         const text = await parsePdf(buffer);
         if (!text || !text.trim()) {
-            return NextResponse.json({ error: 'Failed to extract text from PDF.' }, { status: 422 });
+            return res
+                .status(422)
+                .json({ error: "Failed to extract text from PDF." });
         }
 
-        return NextResponse.json({
-            file_name: file.name,
-            mime_type: file.type || 'application/pdf',
+        return res.status(200).json({
+            file_name: fileName,
+            mime_type: file.mimetype || "application/pdf",
             size: file.size,
             textContent: text,
         });
-
     } catch (err: unknown) {
-        console.error('Error processing PDF upload:', err);
-        return NextResponse.json(
-            { error: 'Internal server error.', detail: err instanceof Error ? err.message : String(err) },
-            { status: 500 },
-        );
+        console.error("Error processing PDF upload:", err);
+        return res.status(500).json({
+            error: "Internal server error.",
+            detail: err instanceof Error ? err.message : String(err),
+        });
     }
 }

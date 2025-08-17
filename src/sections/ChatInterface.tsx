@@ -173,7 +173,7 @@ export const ChatInterface = ({ onBack }: ChatInterfaceProps) => {
     formData1.append("file", file);
 
     try {
-      const response1 = await fetch("/api/parse-pdf", {
+      const response1 = await fetch("/api/parse_pdf", {
         method: "POST",
         body: formData1,
       });
@@ -278,7 +278,7 @@ export const ChatInterface = ({ onBack }: ChatInterfaceProps) => {
         }
         const embedding = await embeddings.json();
 
-        const res = await fetch("/api/vector-search", {
+        const res = await fetch("/api/vector_search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ embedding }),
